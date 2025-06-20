@@ -1,109 +1,138 @@
-/*
-Copyright 2016 Google Inc.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+/**
+ * Enhanced IndexedDB Wrapper
+ * @version 2.0
+ * @license Apache-2.0
+ */
 "use strict";
 
 (function () {
-  function toArray(arr) {
-    return Array.prototype.slice.call(arr);
-  }
+  // Utility functions
+  const toArray = (arr) => Array.prototype.slice.call(arr);
 
-  function promisifyRequest(request) {
-    return new Promise(function (resolve, reject) {
-      request.onsuccess = function () {
+  const isObject = (val) => val !== null && typeof val === "object";
+
+  const createError = (message, error) => {
+    const err = new Error(message);
+    if (error) {
+      err.stack = error.stack;
+      err.originalError = error;
+    }
+    return err;
+  };
+
+  // Enhanced promisification
+  const promisifyRequest = (request) => {
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => {
         resolve(request.result);
       };
 
-      request.onerror = function () {
-        reject(request.error);
+      request.onerror = () => {
+        const error = createError(
+          `IDBRequest failed: ${request.error?.message || "Unknown error"}`,
+          request.error
+        );
+        reject(error);
+      };
+
+      request.onblocked = () => {
+        reject(createError("Database operation blocked"));
       };
     });
-  }
+  };
 
-  function promisifyRequestCall(obj, method, args) {
-    var request;
-    var p = new Promise(function (resolve, reject) {
-      request = obj[method].apply(obj, args);
-      promisifyRequest(request).then(resolve, reject);
+  const promisifyRequestCall = (obj, method, args) => {
+    let request;
+    const p = new Promise((resolve, reject) => {
+      try {
+        request = obj[method].apply(obj, args);
+        promisifyRequest(request).then(resolve, reject);
+      } catch (err) {
+        reject(
+          createError(`IDB operation threw synchronously: ${err.message}`, err)
+        );
+      }
     });
 
     p.request = request;
     return p;
-  }
+  };
 
-  function promisifyCursorRequestCall(obj, method, args) {
-    var p = promisifyRequestCall(obj, method, args);
-    return p.then(function (value) {
-      if (!value) return;
+  const promisifyCursorRequestCall = (obj, method, args) => {
+    const p = promisifyRequestCall(obj, method, args);
+    return p.then((value) => {
+      if (!value) return null;
       return new Cursor(value, p.request);
     });
-  }
+  };
 
-  function proxyProperties(ProxyClass, targetProp, properties) {
-    properties.forEach(function (prop) {
+  // Proxy utilities
+  const proxyProperties = (ProxyClass, targetProp, properties) => {
+    properties.forEach((prop) => {
       Object.defineProperty(ProxyClass.prototype, prop, {
-        get: function () {
+        get() {
           return this[targetProp][prop];
         },
+        enumerable: true,
+        configurable: true,
       });
     });
-  }
+  };
 
-  function proxyRequestMethods(
+  const proxyRequestMethods = (
     ProxyClass,
     targetProp,
     Constructor,
     properties
-  ) {
-    properties.forEach(function (prop) {
+  ) => {
+    properties.forEach((prop) => {
       if (!(prop in Constructor.prototype)) return;
-      ProxyClass.prototype[prop] = function () {
-        return promisifyRequestCall(this[targetProp], prop, arguments);
+      ProxyClass.prototype[prop] = function (...args) {
+        return promisifyRequestCall(this[targetProp], prop, args);
       };
     });
-  }
+  };
 
-  function proxyMethods(ProxyClass, targetProp, Constructor, properties) {
-    properties.forEach(function (prop) {
+  const proxyMethods = (ProxyClass, targetProp, Constructor, properties) => {
+    properties.forEach((prop) => {
       if (!(prop in Constructor.prototype)) return;
-      ProxyClass.prototype[prop] = function () {
-        return this[targetProp][prop].apply(this[targetProp], arguments);
+      ProxyClass.prototype[prop] = function (...args) {
+        return this[targetProp][prop].apply(this[targetProp], args);
       };
     });
-  }
+  };
 
-  function proxyCursorRequestMethods(
+  const proxyCursorRequestMethods = (
     ProxyClass,
     targetProp,
     Constructor,
     properties
-  ) {
-    properties.forEach(function (prop) {
+  ) => {
+    properties.forEach((prop) => {
       if (!(prop in Constructor.prototype)) return;
-      ProxyClass.prototype[prop] = function () {
-        return promisifyCursorRequestCall(this[targetProp], prop, arguments);
+      ProxyClass.prototype[prop] = function (...args) {
+        return promisifyCursorRequestCall(this[targetProp], prop, args);
       };
     });
-  }
+  };
 
-  function Index(index) {
-    this._index = index;
+  // Enhanced Index class
+  class Index {
+    constructor(index) {
+      this._index = index;
+    }
+
+    // Add bulk operations
+    bulkGet(keys) {
+      if (!Array.isArray(keys)) {
+        return Promise.reject(createError("Keys must be an array"));
+      }
+
+      return Promise.all(keys.map((key) => this.get(key)));
+    }
   }
 
   proxyProperties(Index, "_index", ["name", "keyPath", "multiEntry", "unique"]);
-
   proxyRequestMethods(Index, "_index", IDBIndex, [
     "get",
     "getKey",
@@ -111,15 +140,45 @@ limitations under the License.
     "getAllKeys",
     "count",
   ]);
-
   proxyCursorRequestMethods(Index, "_index", IDBIndex, [
     "openCursor",
     "openKeyCursor",
   ]);
 
-  function Cursor(cursor, request) {
-    this._cursor = cursor;
-    this._request = request;
+  // Enhanced Cursor class
+  class Cursor {
+    constructor(cursor, request) {
+      this._cursor = cursor;
+      this._request = request;
+    }
+
+    // Add iteration helpers
+    async *[Symbol.asyncIterator]() {
+      let cursor = this;
+      while (cursor) {
+        yield cursor;
+        cursor = await cursor.continue();
+      }
+    }
+
+    // Add batch processing
+    async processBatch(batchSize, processor) {
+      let cursor = this;
+      let processed = 0;
+
+      while (cursor) {
+        await processor(cursor.value, cursor.key, cursor);
+        processed++;
+
+        if (batchSize && processed >= batchSize) {
+          break;
+        }
+
+        cursor = await cursor.continue();
+      }
+
+      return processed;
+    }
   }
 
   proxyProperties(Cursor, "_cursor", [
@@ -128,36 +187,85 @@ limitations under the License.
     "primaryKey",
     "value",
   ]);
-
   proxyRequestMethods(Cursor, "_cursor", IDBCursor, ["update", "delete"]);
 
-  // proxy 'next' methods
-  ["advance", "continue", "continuePrimaryKey"].forEach(function (methodName) {
+  // Add cursor movement methods
+  ["advance", "continue", "continuePrimaryKey"].forEach((methodName) => {
     if (!(methodName in IDBCursor.prototype)) return;
-    Cursor.prototype[methodName] = function () {
-      var cursor = this;
-      var args = arguments;
-      return Promise.resolve().then(function () {
-        cursor._cursor[methodName].apply(cursor._cursor, args);
-        return promisifyRequest(cursor._request).then(function (value) {
-          if (!value) return;
-          return new Cursor(value, cursor._request);
+    Cursor.prototype[methodName] = function (...args) {
+      return Promise.resolve().then(() => {
+        this._cursor[methodName].apply(this._cursor, args);
+        return promisifyRequest(this._request).then((value) => {
+          if (!value) return null;
+          return new Cursor(value, this._request);
         });
       });
     };
   });
 
-  function ObjectStore(store) {
-    this._store = store;
+  // Enhanced ObjectStore class
+  class ObjectStore {
+    constructor(store) {
+      this._store = store;
+    }
+
+    createIndex(...args) {
+      return new Index(this._store.createIndex.apply(this._store, args));
+    }
+
+    index(...args) {
+      return new Index(this._store.index.apply(this._store, args));
+    }
+
+    // Add bulk operations
+    async bulkAdd(items) {
+      if (!Array.isArray(items)) {
+        throw createError("Items must be an array");
+      }
+
+      const tx = this._store.transaction;
+      const results = [];
+
+      for (const item of items) {
+        try {
+          results.push(await this.add(item));
+        } catch (err) {
+          if (tx.mode !== "readwrite") {
+            throw createError(
+              "Bulk operations require a readwrite transaction"
+            );
+          }
+          throw err;
+        }
+      }
+
+      return results;
+    }
+
+    async bulkPut(items) {
+      if (!Array.isArray(items)) {
+        throw createError("Items must be an array");
+      }
+
+      const tx = this._store.transaction;
+      const results = [];
+
+      for (const item of items) {
+        try {
+          results.push(await this.put(item));
+        } catch (err) {
+          if (tx.mode !== "readwrite") {
+            throw createError(
+              "Bulk operations require a readwrite transaction"
+            );
+          }
+          throw err;
+        }
+      }
+
+      return results;
+    }
   }
-
-  ObjectStore.prototype.createIndex = function () {
-    return new Index(this._store.createIndex.apply(this._store, arguments));
-  };
-
-  ObjectStore.prototype.index = function () {
-    return new Index(this._store.index.apply(this._store, arguments));
-  };
 
   proxyProperties(ObjectStore, "_store", [
     "name",
@@ -165,7 +273,6 @@ limitations under the License.
     "indexNames",
     "autoIncrement",
   ]);
-
   proxyRequestMethods(ObjectStore, "_store", IDBObjectStore, [
     "put",
     "add",
@@ -176,129 +283,284 @@ limitations under the License.
     "getAllKeys",
     "count",
   ]);
-
   proxyCursorRequestMethods(ObjectStore, "_store", IDBObjectStore, [
     "openCursor",
     "openKeyCursor",
   ]);
-
   proxyMethods(ObjectStore, "_store", IDBObjectStore, ["deleteIndex"]);
 
-  function Transaction(idbTransaction) {
-    this._tx = idbTransaction;
-    this.complete = new Promise(function (resolve, reject) {
-      idbTransaction.oncomplete = function () {
-        resolve();
-      };
-      idbTransaction.onerror = function () {
-        reject(idbTransaction.error);
-      };
-    });
-  }
+  // Enhanced Transaction class
+  class Transaction {
+    constructor(idbTransaction) {
+      this._tx = idbTransaction;
+      this._aborted = false;
 
-  Transaction.prototype.objectStore = function () {
-    return new ObjectStore(this._tx.objectStore.apply(this._tx, arguments));
-  };
+      this.complete = new Promise((resolve, reject) => {
+        idbTransaction.oncomplete = () => resolve();
+        idbTransaction.onabort = () => {
+          this._aborted = true;
+          reject(createError("Transaction was aborted", idbTransaction.error));
+        };
+        idbTransaction.onerror = () => {
+          reject(
+            createError(
+              "Transaction encountered an error",
+              idbTransaction.error
+            )
+          );
+        };
+      });
+    }
+
+    objectStore(...args) {
+      if (this._aborted) {
+        throw createError("Cannot use objectStore on aborted transaction");
+      }
+      return new ObjectStore(this._tx.objectStore.apply(this._tx, args));
+    }
+
+    // Add timeout functionality
+    withTimeout(timeout) {
+      if (this._timeoutId) {
+        clearTimeout(this._timeoutId);
+      }
+
+      return new Promise((resolve, reject) => {
+        this._timeoutId = setTimeout(() => {
+          this.abort();
+          reject(createError(`Transaction timed out after ${timeout}ms`));
+        }, timeout);
+
+        this.complete
+          .then((result) => {
+            clearTimeout(this._timeoutId);
+            resolve(result);
+          })
+          .catch(reject);
+      });
+    }
+  }
 
   proxyProperties(Transaction, "_tx", ["objectStoreNames", "mode"]);
-
   proxyMethods(Transaction, "_tx", IDBTransaction, ["abort"]);
 
-  function UpgradeDB(db, oldVersion, transaction) {
-    this._db = db;
-    this.oldVersion = oldVersion;
-    this.transaction = new Transaction(transaction);
-  }
+  // Enhanced UpgradeDB class
+  class UpgradeDB {
+    constructor(db, oldVersion, transaction) {
+      this._db = db;
+      this.oldVersion = oldVersion;
+      this.transaction = new Transaction(transaction);
+      this._migrationHandlers = new Map();
+    }
 
-  UpgradeDB.prototype.createObjectStore = function () {
-    return new ObjectStore(
-      this._db.createObjectStore.apply(this._db, arguments)
-    );
-  };
+    createObjectStore(...args) {
+      return new ObjectStore(this._db.createObjectStore.apply(this._db, args));
+    }
+
+    // Add migration helpers
+    onVersionChange(fromVersion, toVersion, handler) {
+      if (this.oldVersion >= fromVersion && this.oldVersion < toVersion) {
+        this._migrationHandlers.set(fromVersion, handler);
+      }
+      return this;
+    }
+
+    runMigrations() {
+      const migrations = Array.from(this._migrationHandlers.entries()).sort(
+        ([a], [b]) => a - b
+      );
+
+      return migrations.reduce((chain, [version, handler]) => {
+        return chain.then(() => handler(this));
+      }, Promise.resolve());
+    }
+  }
 
   proxyProperties(UpgradeDB, "_db", ["name", "version", "objectStoreNames"]);
-
   proxyMethods(UpgradeDB, "_db", IDBDatabase, ["deleteObjectStore", "close"]);
 
-  function DB(db) {
-    this._db = db;
+  // Enhanced DB class
+  class DB {
+    constructor(db) {
+      this._db = db;
+      this._listeners = new Map();
+
+      db.onversionchange = () => {
+        this._emit("versionchange");
+      };
+
+      db.onclose = () => {
+        this._emit("close");
+      };
+    }
+
+    transaction(...args) {
+      return new Transaction(this._db.transaction.apply(this._db, args));
+    }
+
+    // Add event emitter functionality
+    on(event, listener) {
+      if (!this._listeners.has(event)) {
+        this._listeners.set(event, new Set());
+      }
+      this._listeners.get(event).add(listener);
+      return this;
+    }
+
+    off(event, listener) {
+      if (this._listeners.has(event)) {
+        this._listeners.get(event).delete(listener);
+      }
+      return this;
+    }
+
+    _emit(event, ...args) {
+      if (this._listeners.has(event)) {
+        this._listeners.get(event).forEach((listener) => {
+          try {
+            listener(...args);
+          } catch (err) {
+            console.error(`Error in ${event} listener:`, err);
+          }
+        });
+      }
+    }
   }
 
-  DB.prototype.transaction = function () {
-    return new Transaction(this._db.transaction.apply(this._db, arguments));
-  };
-
   proxyProperties(DB, "_db", ["name", "version", "objectStoreNames"]);
-
   proxyMethods(DB, "_db", IDBDatabase, ["close"]);
 
   // Add cursor iterators
-  // TODO: remove this once browsers do the right thing with promises
-  ["openCursor", "openKeyCursor"].forEach(function (funcName) {
-    [ObjectStore, Index].forEach(function (Constructor) {
-      Constructor.prototype[funcName.replace("open", "iterate")] = function () {
-        var args = toArray(arguments);
-        var callback = args[args.length - 1];
-        var request = (this._store || this._index)[funcName].apply(
-          this._store,
+  ["openCursor", "openKeyCursor"].forEach((funcName) => {
+    [ObjectStore, Index].forEach((Constructor) => {
+      const iteratorName = funcName.replace("open", "iterate");
+      Constructor.prototype[iteratorName] = function (...args) {
+        const callback = args[args.length - 1];
+        const request = (this._store || this._index)[funcName].apply(
+          this._store || this._index,
           args.slice(0, -1)
         );
-        request.onsuccess = function () {
-          callback(request.result);
-        };
+        request.onsuccess = () => callback(request.result);
       };
     });
   });
 
-  // polyfill getAll
-  [Index, ObjectStore].forEach(function (Constructor) {
+  // Enhanced getAll polyfill with better type checking
+  [Index, ObjectStore].forEach((Constructor) => {
     if (Constructor.prototype.getAll) return;
-    Constructor.prototype.getAll = function (query, count) {
-      var instance = this;
-      var items = [];
 
-      return new Promise(function (resolve) {
-        instance.iterateCursor(query, function (cursor) {
+    Constructor.prototype.getAll = function (query, count) {
+      const instance = this;
+      const items = [];
+
+      return new Promise((resolve, reject) => {
+        if (count !== undefined && (typeof count !== "number" || count < 0)) {
+          reject(createError("Count must be a non-negative number"));
+          return;
+        }
+
+        instance.iterateCursor(query, (cursor) => {
           if (!cursor) {
             resolve(items);
             return;
           }
+
           items.push(cursor.value);
 
-          if (count !== undefined && items.length == count) {
+          if (count !== undefined && items.length >= count) {
             resolve(items);
             return;
           }
+
           cursor.continue();
         });
       });
     };
   });
 
-  var exp = {
-    open: function (name, version, upgradeCallback) {
-      var p = promisifyRequestCall(indexedDB, "open", [name, version]);
-      var request = p.request;
+  // Enhanced exports with additional utilities
+  const exp = {
+    open(name, version, upgradeCallback) {
+      const p = promisifyRequestCall(indexedDB, "open", [name, version]);
+      const request = p.request;
 
-      request.onupgradeneeded = function (event) {
+      request.onupgradeneeded = (event) => {
         if (upgradeCallback) {
-          upgradeCallback(
-            new UpgradeDB(request.result, event.oldVersion, request.transaction)
+          const upgradeDB = new UpgradeDB(
+            request.result,
+            event.oldVersion,
+            request.transaction
           );
+          upgradeCallback(upgradeDB);
+
+          // Run migrations if any were registered
+          if (upgradeDB._migrationHandlers.size > 0) {
+            upgradeDB.runMigrations().catch((err) => {
+              console.error("Migration failed:", err);
+              request.transaction.abort();
+            });
+          }
         }
       };
 
-      return p.then(function (db) {
-        return new DB(db);
+      request.onblocked = () => {
+        console.warn(`Database ${name} is blocked from version ${version}`);
+      };
+
+      return p.then((db) => new DB(db));
+    },
+
+    delete(name) {
+      return promisifyRequestCall(indexedDB, "deleteDatabase", [name]);
+    },
+
+    // Database existence check
+    exists(name) {
+      return new Promise((resolve) => {
+        const req = indexedDB.open(name);
+        req.onsuccess = () => {
+          req.result.close();
+          resolve(true);
+        };
+        req.onerror = () => resolve(false);
       });
     },
-    delete: function (name) {
-      return promisifyRequestCall(indexedDB, "deleteDatabase", [name]);
+
+    // Database version check
+    getVersion(name) {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(name);
+        req.onsuccess = () => {
+          const version = req.result.version;
+          req.result.close();
+          resolve(version);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    },
+
+    // Utility for clearing all object stores
+    async clearDatabase(name) {
+      const db = await this.open(name);
+      try {
+        const tx = db.transaction(db.objectStoreNames, "readwrite");
+        await Promise.all(
+          Array.from(db.objectStoreNames).map((name) =>
+            tx.objectStore(name).clear()
+          )
+        );
+        await tx.complete;
+      } finally {
+        db.close();
+      }
     },
   };
 
-  if (typeof module !== "undefined") {
+  // Export based on environment
+  if (typeof module !== "undefined" && module.exports) {
     module.exports = exp;
+  } else if (typeof define === "function" && define.amd) {
+    define([], () => exp);
   } else {
     self.idb = exp;
   }
