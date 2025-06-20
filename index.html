@@ -3,38 +3,131 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Task Manager</title>
+    <title>ChronoTask | Premium Task Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
     <script>
       tailwind.config = {
+        darkMode: "class",
         theme: {
           extend: {
             colors: {
               primary: {
-                500: "#3B82F6",
-                600: "#2563EB",
+                50: "#f0f9ff",
+                100: "#e0f2fe",
+                200: "#bae6fd",
+                300: "#7dd3fc",
+                400: "#38bdf8",
+                500: "#0ea5e9",
+                600: "#0284c7",
+                700: "#0369a1",
+                800: "#075985",
+                900: "#0c4a6e",
               },
               secondary: {
-                500: "#10B981",
-                600: "#059669",
+                50: "#f0fdf4",
+                100: "#dcfce7",
+                200: "#bbf7d0",
+                300: "#86efac",
+                400: "#4ade80",
+                500: "#22c55e",
+                600: "#16a34a",
+                700: "#15803d",
+                800: "#166534",
+                900: "#14532d",
               },
-              danger: {
-                500: "#EF4444",
-                600: "#DC2626",
+              dark: {
+                50: "#f9fafb",
+                100: "#f3f4f6",
+                200: "#e5e7eb",
+                300: "#d1d5db",
+                400: "#9ca3af",
+                500: "#6b7280",
+                600: "#4b5563",
+                700: "#374151",
+                800: "#1f2937",
+                900: "#111827",
               },
+            },
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+            },
+            boxShadow: {
+              glass: "0 4px 30px rgba(0, 0, 0, 0.1)",
+              neumorphic: "8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff",
+              "neumorphic-inset":
+                "inset 2px 2px 5px #d1d9e6, inset -2px -2px 5px #ffffff",
             },
           },
         },
       };
     </script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+      body {
+        font-family: "Inter", sans-serif;
+        transition: all 0.3s ease;
+      }
+
+      .task-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .task-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+      }
+
+      .date-input::-webkit-inner-spin-button,
+      .date-input::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      .gradient-bg {
+        background: linear-gradient(135deg, #0ea5e9 0%, #22c55e 100%);
+      }
+
+      .glass-effect {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+
+      .progress-ring__circle {
+        transition: stroke-dashoffset 0.35s;
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+      }
+
+      .animate-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+    </style>
   </head>
-  <body class="bg-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-3xl">
-      <div class="bg-white rounded-lg shadow-md p-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+  <body
+    class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-dark-800 dark:to-dark-900 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+      <!-- Header with theme toggle -->
+      <header class="flex justify-between items-center mb-8">
+        <div class="flex items-center">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="h-8 w-8 mr-2 text-primary-500"
+            class="h-10 w-10 text-primary-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor">
@@ -44,108 +137,436 @@
               stroke-width="2"
               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          Task Manager
-        </h1>
+          <h1
+            class="text-3xl font-bold bg-clip-text text-transparent gradient-bg ml-2">
+            ChronoTask
+          </h1>
+        </div>
+        <button
+          id="themeToggle"
+          class="p-2 rounded-full bg-white dark:bg-dark-700 shadow-md hover:shadow-lg transition-all">
+          <svg
+            id="sunIcon"
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6 text-yellow-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <svg
+            id="moonIcon"
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6 text-indigo-400 hidden"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </header>
 
-        <form id="todoForm" class="mb-8">
-          <div class="mb-4">
-            <input
-              type="text"
-              id="title"
-              placeholder="What needs to be done?"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              required />
-          </div>
-
-          <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-            <div>
-              <label
-                for="hours"
-                class="block text-sm font-medium text-gray-700 mb-1"
-                >Hours</label
-              >
-              <input
-                type="number"
-                id="hours"
-                min="0"
-                max="23"
-                placeholder="HH"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                required />
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div
+          class="bg-white dark:bg-dark-700 rounded-xl p-4 shadow-lg glass-effect">
+          <div class="flex items-center">
+            <div
+              class="p-3 rounded-full bg-primary-100 dark:bg-primary-900 mr-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6 text-primary-600 dark:text-primary-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
             </div>
             <div>
-              <label
-                for="minutes"
-                class="block text-sm font-medium text-gray-700 mb-1"
-                >Minutes</label
-              >
-              <input
-                type="number"
-                id="minutes"
-                min="0"
-                max="59"
-                placeholder="MM"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                required />
-            </div>
-            <div>
-              <label
-                for="day"
-                class="block text-sm font-medium text-gray-700 mb-1"
-                >Day</label
-              >
-              <input
-                type="number"
-                id="day"
-                min="1"
-                max="31"
-                placeholder="DD"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                required />
-            </div>
-            <div>
-              <label
-                for="month"
-                class="block text-sm font-medium text-gray-700 mb-1"
-                >Month</label
-              >
-              <input
-                type="number"
-                id="month"
-                min="1"
-                max="12"
-                placeholder="MM"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                required />
-            </div>
-            <div>
-              <label
-                for="year"
-                class="block text-sm font-medium text-gray-700 mb-1"
-                >Year</label
-              >
-              <input
-                type="number"
-                id="year"
-                min="2023"
-                value="2023"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                required />
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Total Tasks
+              </p>
+              <h3
+                id="totalTasks"
+                class="text-2xl font-bold text-gray-800 dark:text-white">
+                0
+              </h3>
             </div>
           </div>
+        </div>
 
-          <button
-            type="submit"
-            class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
-            Add Task
-          </button>
-        </form>
+        <div
+          class="bg-white dark:bg-dark-700 rounded-xl p-4 shadow-lg glass-effect">
+          <div class="flex items-center">
+            <div
+              class="p-3 rounded-full bg-secondary-100 dark:bg-secondary-900 mr-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6 text-secondary-600 dark:text-secondary-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Completed</p>
+              <h3
+                id="completedTasks"
+                class="text-2xl font-bold text-gray-800 dark:text-white">
+                0
+              </h3>
+            </div>
+          </div>
+        </div>
 
-        <ul id="todoList" class="space-y-3"></ul>
+        <div
+          class="bg-white dark:bg-dark-700 rounded-xl p-4 shadow-lg glass-effect">
+          <div class="flex items-center">
+            <div class="relative w-12 h-12 mr-4">
+              <svg class="w-full h-full" viewBox="0 0 36 36">
+                <path
+                  d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#e6e6e6"
+                  stroke-width="3" />
+                <path
+                  id="progressCircle"
+                  d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#0ea5e9"
+                  stroke-width="3"
+                  stroke-dasharray="0, 100" />
+              </svg>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <span
+                  id="completionPercentage"
+                  class="text-xs font-bold text-gray-800 dark:text-white"
+                  >0%</span
+                >
+              </div>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Completion</p>
+              <h3 class="text-2xl font-bold text-gray-800 dark:text-white">
+                <span id="completionRatio">0/0</span>
+              </h3>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <!-- Main Card -->
+      <div
+        class="bg-white dark:bg-dark-700 rounded-2xl shadow-xl overflow-hidden mb-8 animate__animated animate__fadeIn">
+        <!-- Tab Navigation -->
+        <div class="border-b border-gray-200 dark:border-dark-600">
+          <nav class="flex -mb-px">
+            <button
+              id="allTab"
+              class="tab-button active py-4 px-6 text-center border-b-2 font-medium text-sm border-primary-500 text-primary-600 dark:text-primary-400 dark:border-primary-400">
+              All Tasks
+            </button>
+            <button
+              id="pendingTab"
+              class="tab-button py-4 px-6 text-center border-b-2 font-medium text-sm border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:border-gray-300 dark:hover:text-gray-300">
+              Pending
+            </button>
+            <button
+              id="completedTab"
+              class="tab-button py-4 px-6 text-center border-b-2 font-medium text-sm border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:border-gray-300 dark:hover:text-gray-300">
+              Completed
+            </button>
+          </nav>
+        </div>
+
+        <!-- Task Input -->
+        <div class="p-6">
+          <form id="todoForm" class="mb-6">
+            <div class="flex items-center mb-4">
+              <input
+                type="text"
+                id="title"
+                placeholder="What's your next task?"
+                class="flex-1 px-4 py-3 border-0 bg-gray-100 dark:bg-dark-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-dark-500 text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all"
+                required />
+              <button
+                type="submit"
+                class="ml-3 bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-6 rounded-lg transition duration-200 flex items-center shadow-md hover:shadow-lg">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 mr-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4v16m8-8H4" />
+                </svg>
+                Add
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div>
+                <label
+                  for="hours"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >Hours</label
+                >
+                <input
+                  type="number"
+                  id="hours"
+                  min="0"
+                  max="23"
+                  placeholder="HH"
+                  class="date-input w-full px-3 py-2 bg-gray-100 dark:bg-dark-600 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-dark-500 text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                  required />
+              </div>
+              <div>
+                <label
+                  for="minutes"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >Minutes</label
+                >
+                <input
+                  type="number"
+                  id="minutes"
+                  min="0"
+                  max="59"
+                  placeholder="MM"
+                  class="date-input w-full px-3 py-2 bg-gray-100 dark:bg-dark-600 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-dark-500 text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                  required />
+              </div>
+              <div>
+                <label
+                  for="day"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >Day</label
+                >
+                <input
+                  type="number"
+                  id="day"
+                  min="1"
+                  max="31"
+                  placeholder="DD"
+                  class="date-input w-full px-3 py-2 bg-gray-100 dark:bg-dark-600 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-dark-500 text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                  required />
+              </div>
+              <div>
+                <label
+                  for="month"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >Month</label
+                >
+                <input
+                  type="number"
+                  id="month"
+                  min="1"
+                  max="12"
+                  placeholder="MM"
+                  class="date-input w-full px-3 py-2 bg-gray-100 dark:bg-dark-600 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-dark-500 text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                  required />
+              </div>
+              <div>
+                <label
+                  for="year"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >Year</label
+                >
+                <input
+                  type="number"
+                  id="year"
+                  min="2023"
+                  value="2023"
+                  class="date-input w-full px-3 py-2 bg-gray-100 dark:bg-dark-600 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-dark-500 text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                  required />
+              </div>
+            </div>
+          </form>
+
+          <!-- Task Filters -->
+          <div class="flex justify-between items-center mb-4">
+            <div class="relative">
+              <select
+                id="sortSelect"
+                class="appearance-none bg-gray-100 dark:bg-dark-600 border-0 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="dueSoon">Due Soonest</option>
+                <option value="dueLater">Due Later</option>
+              </select>
+              <div
+                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+                <svg
+                  class="fill-current h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20">
+                  <path
+                    d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
+            <div class="flex items-center">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Search tasks..."
+                class="bg-gray-100 dark:bg-dark-600 border-0 rounded-lg px-3 py-2 text-sm text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              <button
+                id="clearSearch"
+                class="ml-2 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Task List -->
+          <ul
+            id="todoList"
+            class="divide-y divide-gray-200 dark:divide-dark-600">
+            <!-- Tasks will be inserted here -->
+            <div id="emptyState" class="text-center py-12">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-16 w-16 mx-auto text-gray-400 dark:text-gray-500 mb-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <h3
+                class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
+                No tasks yet
+              </h3>
+              <p class="text-gray-500 dark:text-gray-400">
+                Add your first task to get started
+              </p>
+            </div>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="text-center text-gray-500 dark:text-gray-400 text-sm">
+        <p>ChronoTask &copy; 2023 | A premium task management experience</p>
+      </footer>
     </div>
+
+    <!-- Confetti effect container -->
+    <div
+      id="confetti-container"
+      class="fixed inset-0 pointer-events-none z-50 overflow-hidden"></div>
 
     <script src="idb.js"></script>
     <script src="app.js"></script>
+    <script>
+      // Theme toggle functionality
+      const themeToggle = document.getElementById("themeToggle");
+      const sunIcon = document.getElementById("sunIcon");
+      const moonIcon = document.getElementById("moonIcon");
+
+      // Check for saved theme preference or use preferred color scheme
+      if (
+        localStorage.getItem("theme") === "dark" ||
+        (!localStorage.getItem("theme") &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ) {
+        document.documentElement.classList.add("dark");
+        sunIcon.classList.add("hidden");
+        moonIcon.classList.remove("hidden");
+      } else {
+        document.documentElement.classList.remove("dark");
+        sunIcon.classList.remove("hidden");
+        moonIcon.classList.add("hidden");
+      }
+
+      // Toggle theme on button click
+      themeToggle.addEventListener("click", () => {
+        document.documentElement.classList.toggle("dark");
+        localStorage.setItem(
+          "theme",
+          document.documentElement.classList.contains("dark") ? "dark" : "light"
+        );
+        sunIcon.classList.toggle("hidden");
+        moonIcon.classList.toggle("hidden");
+      });
+
+      // Tab switching functionality
+      const tabs = document.querySelectorAll(".tab-button");
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((t) =>
+            t.classList.remove(
+              "active",
+              "border-primary-500",
+              "text-primary-600",
+              "dark:text-primary-400",
+              "dark:border-primary-400"
+            )
+          );
+          tab.classList.add(
+            "active",
+            "border-primary-500",
+            "text-primary-600",
+            "dark:text-primary-400",
+            "dark:border-primary-400"
+          );
+          // Here you would filter tasks based on the selected tab
+          // You'll need to implement this in your app.js
+        });
+      });
+
+      // Update progress circle
+      function updateProgressCircle(percentage) {
+        const circle = document.getElementById("progressCircle");
+        const radius = circle.r.baseVal.value;
+        const circumference = radius * 2 * Math.PI;
+        const offset = circumference - (percentage / 100) * circumference;
+
+        circle.style.strokeDasharray = `${circumference} ${circumference}`;
+        circle.style.strokeDashoffset = offset;
+      }
+
+      // Initialize progress circle
+      updateProgressCircle(0);
+    </script>
   </body>
 </html>
